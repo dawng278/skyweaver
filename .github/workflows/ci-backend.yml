@@ -1,0 +1,66 @@
+name: CI Backend
+
+on:
+  push:
+    branches:
+      - develop
+      - "feat/auth"
+      - "feat/server-management"
+      - "feat/monitoring"
+      - "feat/deployment"
+      - "feat/alerting"
+      - "feat/terminal"
+    paths:
+      - "backend/**"
+      - ".github/workflows/ci-backend.yml"
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - "backend/**"
+
+jobs:
+  lint-and-test:
+    name: Lint & Test Backend (Go)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Thiết lập Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Tải dependencies
+        working-directory: ./backend
+        run: go mod download
+
+      - name: Kiểm tra go vet
+        working-directory: ./backend
+        run: go vet ./...
+
+      - name: Chạy golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          working-directory: backend
+          args: --timeout=5m
+
+      - name: Chạy Unit Tests
+        working-directory: ./backend
+        run: |
+          go test -v -race -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out | tail -1
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/coverage.out
+          retention-days: 7

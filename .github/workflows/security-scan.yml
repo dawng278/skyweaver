@@ -1,0 +1,90 @@
+name: Security Scan
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  schedule:
+    # Chạy tự động mỗi thứ Hai lúc 08:00 UTC
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+jobs:
+  gosec:
+    name: Go Security Scan (gosec)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Chạy gosec trên Backend
+        uses: securego/gosec@master
+        with:
+          args: "-fmt sarif -out backend-gosec.sarif ./backend/..."
+
+      - name: Chạy gosec trên Agent
+        uses: securego/gosec@master
+        with:
+          args: "-fmt sarif -out agent-gosec.sarif ./agent/..."
+
+      - name: Upload SARIF (backend)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: backend-gosec.sarif
+          category: gosec-backend
+
+      - name: Upload SARIF (agent)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: agent-gosec.sarif
+          category: gosec-agent
+
+  trivy:
+    name: Vulnerability Scan (Trivy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Chạy Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH"
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  npm-audit:
+    name: NPM Security Audit (Frontend)
+    runs-on: ubuntu-latest
+    if: hashFiles('frontend/package-lock.json') != ''
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Thiết lập Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cài đặt dependencies
+        working-directory: ./frontend
+        run: npm ci --ignore-scripts
+
+      - name: Chạy npm audit
+        working-directory: ./frontend
+        run: npm audit --audit-level=high

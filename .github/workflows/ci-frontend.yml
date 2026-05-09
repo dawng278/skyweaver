@@ -1,0 +1,59 @@
+name: CI Frontend
+
+on:
+  push:
+    branches:
+      - develop
+      - "feat/frontend"
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - "frontend/**"
+
+jobs:
+  lint-and-build:
+    name: Lint & Build Frontend (Next.js)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Thiết lập Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Cài đặt dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Chạy ESLint
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Kiểm tra TypeScript
+        working-directory: ./frontend
+        run: npx tsc --noEmit
+
+      - name: Build Next.js
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8080/v1
+          NEXT_PUBLIC_WS_URL: ws://localhost:8080/ws
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: frontend-build
+          path: frontend/.next/
+          retention-days: 3

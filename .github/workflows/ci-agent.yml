@@ -1,0 +1,72 @@
+name: CI Agent
+
+on:
+  push:
+    branches:
+      - develop
+      - "feat/agent"
+    paths:
+      - "agent/**"
+      - ".github/workflows/ci-agent.yml"
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - "agent/**"
+
+jobs:
+  build-agent:
+    name: Build Go Agent (Cross-compile)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Thiết lập Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          cache: true
+          cache-dependency-path: agent/go.sum
+
+      - name: Tải dependencies
+        working-directory: ./agent
+        run: go mod download
+
+      - name: Kiểm tra go vet
+        working-directory: ./agent
+        run: go vet ./...
+
+      - name: Build static binary (${{ matrix.goos }}/${{ matrix.goarch }})
+        working-directory: ./agent
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          go build -ldflags="-s -w" -o bin/skyweaver-agent-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/
+
+      - name: Kiểm tra kích thước binary
+        run: |
+          SIZE=$(du -m agent/bin/skyweaver-agent-${{ matrix.goos }}-${{ matrix.goarch }} | cut -f1)
+          echo "Binary size: ${SIZE}MB"
+          if [ "$SIZE" -gt 20 ]; then
+            echo "CẢNH BÁO: Binary vượt quá giới hạn 20MB!"
+            exit 1
+          fi
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skyweaver-agent-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: agent/bin/skyweaver-agent-${{ matrix.goos }}-${{ matrix.goarch }}
+          retention-days: 7

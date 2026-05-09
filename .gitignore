@@ -1,0 +1,68 @@
+# ========================
+# Go
+# ========================
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+/backend/bin/
+/agent/bin/
+go.sum.bak
+
+# ========================
+# Node / Next.js
+# ========================
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+.pnp
+.pnp.js
+
+# ========================
+# Môi trường & Bí mật
+# ========================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+
+# ========================
+# Docker
+# ========================
+docker-compose.override.yml
+
+# ========================
+# Database
+# ========================
+*.db
+*.sqlite
+pgdata/
+redisdata/
+miniodata/
+
+# ========================
+# IDE & OS
+# ========================
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ========================
+# Logs & Artifacts
+# ========================
+*.log
+logs/
+tmp/
